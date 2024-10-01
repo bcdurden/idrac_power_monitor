@@ -20,7 +20,7 @@ protocol = 'https://'
 drac_managers_path = '/redfish/v1/Managers/iDRAC.Embedded.1'
 drac_chassis_path = '/redfish/v1/Chassis/System.Embedded.1'
 drac_powercontrol_path = '/redfish/v1/Chassis/System.Embedded.1/Power/PowerControl'
-drac_powerON_path = '/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset'
+drac_power_path = '/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset'
 drac_thermals = '/redfish/v1/Chassis/System.Embedded.1/Thermal'
 
 
@@ -88,7 +88,7 @@ class IdracRest:
 
     def power_on(self) -> Response | None:
         try:
-            result = requests.post(protocol + self.host + drac_powerON_path, auth=self.auth, verify=False,
+            result = requests.post(protocol + self.host + drac_power_path, auth=self.auth, verify=False,
                                    json={"ResetType": "On"}, timeout=300)
         except RequestException as e:
             raise CannotConnect(f"Could not power on {self.host}: {e}")
@@ -104,6 +104,48 @@ class IdracRest:
                 raise RedfishConfig()
         if "error" in json:
             _LOGGER.error("iDRAC power on failed: %s", json["error"]["@Message.ExtendedInfo"][0]["Message"])
+
+        return result
+
+    def power_off(self) -> Response | None:
+        try:
+            result = requests.post(protocol + self.host + drac_power_path, auth=self.auth, verify=False,
+                                   json={"ResetType": "ForceOff"}, timeout=300)
+        except RequestException as e:
+            raise CannotConnect(f"Could not power on {self.host}: {e}")
+
+        json = result.json()
+        if result.status_code == 401:
+            raise InvalidAuth()
+
+        if result.status_code == 404:
+            error = result.json()['error']
+            if error['code'] == 'Base.1.0.GeneralError' and 'RedFish attribute is disabled' in \
+                    error['@Message.ExtendedInfo'][0]['Message']:
+                raise RedfishConfig()
+        if "error" in json:
+            _LOGGER.error("iDRAC hard shutdown failed: %s", json["error"]["@Message.ExtendedInfo"][0]["Message"])
+
+        return result
+
+    def power_off_graceful(self) -> Response | None:
+        try:
+            result = requests.post(protocol + self.host + drac_power_path, auth=self.auth, verify=False,
+                                   json={"ResetType": "GracefulShutdown"}, timeout=300)
+        except RequestException as e:
+            raise CannotConnect(f"Could not power on {self.host}: {e}")
+
+        json = result.json()
+        if result.status_code == 401:
+            raise InvalidAuth()
+
+        if result.status_code == 404:
+            error = result.json()['error']
+            if error['code'] == 'Base.1.0.GeneralError' and 'RedFish attribute is disabled' in \
+                    error['@Message.ExtendedInfo'][0]['Message']:
+                raise RedfishConfig()
+        if "error" in json:
+            _LOGGER.error("iDRAC power graceful shutdown failed: %s", json["error"]["@Message.ExtendedInfo"][0]["Message"])
 
         return result
 

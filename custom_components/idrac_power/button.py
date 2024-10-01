@@ -55,6 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities([
         IdracPowerONButton(hass, rest_client, device_info, f"{serial}_{name}_power_on", name),
+        IdracPowerOffButton(hass, rest_client, device_info, f"{serial}_{name}_power_off", name),
+        IdracGracefulPoweroffButton(hass, rest_client, device_info, f"{serial}_{name}_power_off_graceful", name),
         IdracRefreshButton(hass, rest_client, device_info, f"{serial}_{name}_refresh", name)
     ])
 
@@ -78,6 +80,46 @@ class IdracPowerONButton(ButtonEntity):
 
     async def async_press(self) -> None:
         await self.hass.async_add_executor_job(self.rest.power_on)
+
+class IdracGracefulPoweroffButton(ButtonEntity):
+
+    def __init__(self, hass, rest: IdracRest, device_info, unique_id, name):
+        self.hass = hass
+        self.rest = rest
+
+        self.entity_description = ButtonEntityDescription(
+            key='power_off_graceful',
+            name=f"Graceful power off {name}",
+            icon='mdi:power',
+            device_class=ButtonDeviceClass.UPDATE,
+        )
+
+        self._attr_device_info = device_info
+        self._attr_unique_id = unique_id
+        self._attr_has_entity_name = True
+
+    async def async_press(self) -> None:
+        await self.hass.async_add_executor_job(self.rest.power_off_graceful)
+
+class IdracPowerOffButton(ButtonEntity):
+
+    def __init__(self, hass, rest: IdracRest, device_info, unique_id, name):
+        self.hass = hass
+        self.rest = rest
+
+        self.entity_description = ButtonEntityDescription(
+            key='power_off',
+            name=f"Power off {name}",
+            icon='mdi:power',
+            device_class=ButtonDeviceClass.UPDATE,
+        )
+
+        self._attr_device_info = device_info
+        self._attr_unique_id = unique_id
+        self._attr_has_entity_name = True
+
+    async def async_press(self) -> None:
+        await self.hass.async_add_executor_job(self.rest.power_off)
 
 
 class IdracRefreshButton(ButtonEntity):
